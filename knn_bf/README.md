@@ -8,6 +8,7 @@ $ cd build
 $ cmake -DCMAKE_BUILD_TYPE=RELEASE ..
 $ make -j8
 ```
+Vašim úkolem je dopsat metodu `brute_force`, která hledá k nejbližších sousedů pro dotaz.
 
 ## Řešení
 
