@@ -1,5 +1,10 @@
-# AVD
+# Brute force KNN
 
-Zdrojové kódy pro úkoly v předmětu AVD.
+Překlad s pomocí CMake:
 
-1. [KNN - brute force](https://github.com/RadimBaca/AVD/tree/main/knn_bf "KNN")
+```bash
+$ mkdir -p build
+$ cd build
+$ cmake -DCMAKE_BUILD_TYPE=RELEASE ..
+$ make -j8
+```
