@@ -3,17 +3,66 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <string>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <chrono>
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <omp.h>
 
-void sift_test();
+struct sfile_info {
+    size_t dim;
+    size_t count;
+    char file_name[256];
 
-int main(void)
+    sfile_info(char* p_file_name) {
+        strcpy(file_name, p_file_name);
+    }
+};
+
+//float* fvecs_read(const char* fname, size_t* d_out, size_t* n_out) {
+float* fvecs_read(sfile_info& fi)
 {
-    sift_test();
+    FILE* f = fopen(fi.file_name, "r");
+    if (!f) {
+        fprintf(stderr, "could not open %s\n", fi.file_name);
+        perror("");
+        abort();
+    }
+    int d;
+    fread(&d, 1, sizeof(int), f);
+    assert((d > 0 && d < 1000000) || !"unreasonable dimension");
+    fseek(f, 0, SEEK_SET);
+    struct stat st;
+    fstat(fileno(f), &st);
+    size_t sz = st.st_size;
+    assert(sz % ((d + 1) * 4) == 0 || !"weird file size");
+    size_t n = sz / ((d + 1) * 4);
 
-    return 0;
+    fi.dim = d;
+    fi.count = n;
+    float* x = new float[n * (d + 1)];
+    size_t nr = fread(x, sizeof(float), n * (d + 1), f);
+    assert(nr == n * (d + 1) || !"could not read whole file");
+
+    // shift array to remove row headers
+    for (size_t i = 0; i < n; i++)
+        memmove(x + i * d, x + 1 + i * (d + 1), d * sizeof(*x));
+
+    fclose(f);
+    return x;
 }
 
+// not very clean, but works as long as sizeof(int) == sizeof(float)
+int* ivecs_read(sfile_info& fi) {
+    return (int*)fvecs_read(fi);
+}
 
 void brute_force(float* data, float* query, std::vector<int>& result, size_t dim, uint32_t k, size_t node_count)
 {
@@ -28,31 +77,20 @@ void brute_force(float* data, float* query, std::vector<int>& result, size_t dim
 }
 
 void sift_test() {
-    size_t node_count = 1000000;
-    size_t qsize = 10000; // the number of query vectors
-    size_t qcount = 100; // the number of processed queries
-    size_t vecdim = 128;
-    size_t answer_size = 100;
-    uint32_t k = 10;
+    int k = 10;
+    int queries_processed = 100;
 
     /////////////////////////////////////////////////////// READ DATA
-    float* mass = new float[node_count * vecdim];
-    std::ifstream input("sift1M/sift1M.bin", std::ios::binary);
-    if (!input.is_open()) std::runtime_error("Input data file not opened!");
-    input.read((char*)mass, node_count * vecdim * sizeof(float));
-    input.close();
+    sfile_info fi_base("../../sift/sift_base.fvecs");
+    sfile_info fi_query("../../sift/sift_query.fvecs");
+    sfile_info fi_groundtruth("../../sift/sift_groundtruth.ivecs");
 
-    float* massQ = new float[qsize * vecdim];
-    std::ifstream inputQ("sift1M/siftQ1M.bin", std::ios::binary);
-    if (!input.is_open()) std::runtime_error("Input query file not opened!");
-    inputQ.read((char*)massQ, qsize * vecdim * sizeof(float));
-    inputQ.close();
+    float* mass = fvecs_read(fi_base);
+    float* massQ = fvecs_read(fi_query);
+    int* massQA = ivecs_read(fi_groundtruth);
 
-    unsigned int* massQA = new unsigned int[qsize * answer_size];
-    std::ifstream inputQA("sift1M/knnQA1M.bin", std::ios::binary);
-    if (!input.is_open()) std::runtime_error("Input result file not opened!");
-    inputQA.read((char*)massQA, qsize * answer_size * sizeof(int));
-    inputQA.close();
+    assert(fi_base.dim == fi_query.dim || !"query does not have same dimension as base set");
+    assert(fi_query.count == fi_groundtruth.count || !"incorrect number of ground truth entries");
 
 
 
@@ -69,9 +107,9 @@ void sift_test() {
 #endif
         std::vector<int> result;
         auto start = std::chrono::steady_clock::now();
-        for (int i = 0; i < qcount; i++)
+        for (int i = 0; i < queries_processed; i++)
         {
-            brute_force(mass, &massQ[i * vecdim], result, vecdim, k, node_count);
+            brute_force(mass, &massQ[i * fi_query.dim], result, fi_query.dim, k, fi_base.count);
         }
         auto end = std::chrono::steady_clock::now();
         int time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
@@ -80,9 +118,19 @@ void sift_test() {
 
         result.clear();
     }
-    std::cout << "avg: " << (float)sum / (qcount * 3) << " [us]; " << "min: " << min_time << " [us]; \n";
+    std::cout << "avg: " << (float)sum / (queries_processed * 3) << " [us]; " << "min: " << min_time << " [us]; \n";
     
     delete[] mass;
     delete[] massQ;
     delete[] massQA;
 }
+
+
+
+int main(void)
+{
+    sift_test();
+
+    return 0;
+}
+
