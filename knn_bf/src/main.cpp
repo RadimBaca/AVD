@@ -64,6 +64,17 @@ int* ivecs_read(sfile_info& fi) {
     return (int*)fvecs_read(fi);
 }
 
+double distance(float* data, float* query, size_t dim)
+{
+    double dist = 0;
+    for (int k = 0; k < dim; k++)
+    {
+        double r = data[k] - query[k];
+        dist += r * r;
+    }
+    return dist;
+}
+
 void brute_force(float* data, float* query, std::vector<int>& result, size_t dim, uint32_t k, size_t node_count)
 {
     std::vector<std::pair<double, int>> nearest;
@@ -71,6 +82,7 @@ void brute_force(float* data, float* query, std::vector<int>& result, size_t dim
     // TODO
     // scan the data and compute a distance between each vector and query
     // store K nearest neighbors in the result vector
+
 
     // move positions from nearest to result
     for (auto& x : nearest) result.push_back(x.second);
@@ -98,28 +110,26 @@ void sift_test() {
     std::cout << "Start querying\n";
     std::vector<std::pair<float, float>> precision_time;  
 
-    int sum = 0;
-    int min_time;
-    for (int i = 0; i < 3; i++)
-    {
-#ifdef COLLECT_STAT
-        hnsw.stat_.clear();
-#endif
-        std::vector<int> result;
-        auto start = std::chrono::steady_clock::now();
-        for (int i = 0; i < queries_processed; i++)
-        {
-            brute_force(mass, &massQ[i * fi_query.dim], result, fi_query.dim, k, fi_base.count);
-        }
-        auto end = std::chrono::steady_clock::now();
-        int time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-        sum += time;
-        min_time = i == 0 ? time : std::min(min_time, time);
 
-        result.clear();
+    std::vector<int> result;
+    int recall = 0;
+    auto start = std::chrono::steady_clock::now();
+    for (int i = 0; i < queries_processed; i++)
+    {
+        brute_force(mass, &massQ[i * fi_query.dim], result, fi_query.dim, k, fi_base.count);
+
+        // compute recall
+        for (auto& r : result) {
+            for (int j = 0; j < k; j++) {
+                if (r == massQA[i * fi_groundtruth.dim + j]) recall++;
+            }
+        }
     }
-    std::cout << "avg: " << (float)sum / (queries_processed * 3) << " [us]; " << "min: " << min_time << " [us]; \n";
-    
+    auto end = std::chrono::steady_clock::now();
+
+    std::cout << "Average query time: " << (float)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / (1000 * queries_processed) << " [ms]\n";
+    std::cout << "Recall: " << (double)recall/(k*queries_processed)  << "\n";
+
     delete[] mass;
     delete[] massQ;
     delete[] massQA;
