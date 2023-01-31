@@ -82,7 +82,24 @@ void brute_force(float* data, float* query, std::vector<int>& result, size_t dim
     // TODO
     // scan the data and compute a distance between each vector and query
     // store K nearest neighbors in the result vector
-
+    for (int i = 0; i < node_count; i++)
+    {
+        double dist = distance(&data[i * dim], query, dim);
+        if (nearest.size() < k)
+        {
+            nearest.emplace_back(dist, i);
+            if (nearest.size() == k) std::sort(nearest.begin(), nearest.end());
+        }
+        else
+        {
+            if (dist < nearest[k - 1].first)
+            {
+                auto pos = std::lower_bound(nearest.begin(), nearest.end(), std::make_pair(dist, i));
+                nearest.insert(pos, std::make_pair(dist, i));
+                nearest.pop_back();
+            }
+        }
+    }
 
     // move positions from nearest to result
     for (auto& x : nearest) result.push_back(x.second);
@@ -103,7 +120,8 @@ void sift_test() {
 
     assert(fi_base.dim == fi_query.dim || !"query does not have same dimension as base set");
     assert(fi_query.count == fi_groundtruth.count || !"incorrect number of ground truth entries");
-
+    assert(queries_processed < fi_query.count || !"not enough queries in the file");
+    
 
 
     /////////////////////////////////////////////////////// QUERY PART
