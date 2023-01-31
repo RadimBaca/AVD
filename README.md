@@ -1,4 +1,4 @@
-# AVD
+# Algoritmy vykonávání dotazů - AVD
 
 Zdrojové kódy pro úkoly v předmětu AVD.
 
