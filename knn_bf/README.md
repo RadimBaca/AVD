@@ -18,4 +18,4 @@ Implementace naměří průměrný čas dotazu a také spočítá recall, který
 
 ## Bonus task
 
-Zkuste změnit datový typ prvku vektoru z `float` na `int8`.
+Zkuste změnit datový typ prvku vektoru z `float` na `int8` a změřte co to udělá s průměrným časem jednoho dotazu a recall. 
