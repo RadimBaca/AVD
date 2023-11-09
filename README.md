@@ -4,7 +4,7 @@ Zdrojové kódy pro úkoly v předmětu AVD.
 
 ## Data
 
-Pro zprovoznění úkolů souvisejících s vícerozměrnými daty je nutné stáhnout a roybalit SIFT kolekci do adresáře `sift`.
+Pro zprovoznění úkolů souvisejících s vícerozměrnými daty je nutné stáhnout a rozbalit SIFT kolekci do adresáře `sift`.
 
 ```bash
 $ wget ftp://ftp.irisa.fr/local/texmex/corpus/sift.tar.gz
